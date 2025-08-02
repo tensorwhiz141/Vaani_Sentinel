@@ -5,13 +5,14 @@ Accepts raw CSV/JSON data, structures content blocks, and implements verificatio
 
 import csv
 import json
+import uuid
+import os
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from pathlib import Path
 from better_profanity import profanity
 from textblob import TextBlob
 import re
-import os
 from core.config import settings
 
 class ContentBlock:
@@ -51,8 +52,12 @@ class KnowledgeMinerSanitizer:
         """Load truth source data"""
         if os.path.exists(self.truth_source_path):
             try:
-                df = pd.read_csv(self.truth_source_path)
-                return df.to_dict('records')
+                truth_data = []
+                with open(self.truth_source_path, 'r', encoding='utf-8') as file:
+                    csv_reader = csv.DictReader(file)
+                    for row in csv_reader:
+                        truth_data.append(dict(row))
+                return truth_data
             except Exception as e:
                 print(f"Error loading truth source: {e}")
                 return []
@@ -61,21 +66,22 @@ class KnowledgeMinerSanitizer:
     def process_csv_input(self, file_path: str) -> List[ContentBlock]:
         """Process CSV input file"""
         try:
-            df = pd.read_csv(file_path)
             content_blocks = []
             
-            for _, row in df.iterrows():
-                content_id = str(uuid.uuid4())
-                text = str(row.get('text', row.get('content', '')))
-                source = f"csv:{file_path}"
-                metadata = {
-                    "row_index": row.name,
-                    "original_data": row.to_dict()
-                }
-                
-                block = ContentBlock(content_id, text, source, metadata)
-                self._verify_content(block)
-                content_blocks.append(block)
+            with open(file_path, 'r', encoding='utf-8') as file:
+                csv_reader = csv.DictReader(file)
+                for row_index, row in enumerate(csv_reader):
+                    content_id = str(uuid.uuid4())
+                    text = str(row.get('text', row.get('content', '')))
+                    source = f"csv:{file_path}"
+                    metadata = {
+                        "row_index": row_index,
+                        "original_data": dict(row)
+                    }
+                    
+                    block = ContentBlock(content_id, text, source, metadata)
+                    self._verify_content(block)
+                    content_blocks.append(block)
             
             self.content_blocks.extend(content_blocks)
             return content_blocks
