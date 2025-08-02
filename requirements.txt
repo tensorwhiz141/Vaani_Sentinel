@@ -20,7 +20,7 @@ groq==0.4.1
 openai==1.3.7
 langdetect==1.0.9
 transformers==4.35.2
-torch==2.1.1
+torch==2.5.1
 
 # Text-to-Speech (FREE ONLY)
 gTTS==2.4.0
